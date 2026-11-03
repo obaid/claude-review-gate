@@ -6,7 +6,6 @@
 - **python3** on your `PATH`. The hook uses only the standard library. macOS and Linux are tested. On Windows, run Claude Code under WSL, or make sure `python3` resolves.
 - **git**.
 - **gh** (GitHub CLI), signed in, for the PR flow: `gh auth login`.
-- **Read access to this repo.** It is private, so ask the owner to add you as a collaborator. Claude Code fetches it with your git credentials. If you use HTTPS, run `gh auth setup-git` once so git can use your `gh` login.
 
 ## Install for yourself
 
@@ -62,7 +61,7 @@ If you'd rather every teammate opts in individually, send them the "Install for 
 
 Then restart Claude Code. To pin a team to a known version, tag releases (`claude plugin tag`) and point the marketplace at a tag or branch.
 
-Background auto-update of a private marketplace needs a token in the environment, for example `GITHUB_TOKEN`. Without one, run the update manually.
+If you fork this repo and keep the fork private, teammates need read access to it. Background auto-update of a private marketplace also needs a token in the environment, for example `GITHUB_TOKEN`.
 
 ## Uninstall
 
