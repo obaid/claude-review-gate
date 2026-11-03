@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "review-gate",
+  "owner": {
+    "name": "Obaid Ahmed"
+  },
+  "plugins": [
+    {
+      "name": "review-gate",
+      "description": "Self-review before every turn ends, scaled by risk; PR-only workflow; human sign-off from chat.",
+      "source": "./"
+    }
+  ]
+}

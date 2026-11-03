@@ -9,7 +9,8 @@ so author and reviewer cannot cycle forever.
 
 Events (argv[1]):
   session-start  baseline the cwd repo's dirty files, so pre-existing changes
-                 are not blamed on this session
+                 are not blamed on this session; hand Claude the review rules
+                 (RULES.md next to this plugin) as session context
   pre-edit       before Edit/Write/MultiEdit/NotebookEdit: baseline the file's
                  repo the first time it is touched; remember non-git files
   stop           decide whether to ask for a review
@@ -228,8 +229,19 @@ def snapshot_repo(state, repo):
             state["repos"][repo] = {"reviewed": files, "lines": fingerprints(repo, files)}
 
 
+RULES_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "RULES.md")
+
+
 def on_session_start(data):
     session_id = data.get("session_id")
+    try:
+        with open(RULES_PATH) as f:
+            rules = f.read()
+    except Exception:
+        rules = ""
+    if rules.strip():
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
+                                                 "additionalContext": rules}}))
     state = load_state(session_id)
     snapshot_repo(state, repo_root(data.get("cwd") or os.getcwd()))
     save_state(session_id, state)

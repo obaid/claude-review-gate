@@ -1,0 +1,9 @@
+{
+  "name": "review-gate",
+  "version": "0.1.0",
+  "description": "Makes review part of every Claude Code session: before a turn ends, Claude reviews its own diff with fresh context (scaled by risk), fixes what it finds and proves it; changes ship branch -> PR -> review -> merge, never straight to main.",
+  "author": {
+    "name": "Obaid Ahmed"
+  },
+  "keywords": ["code-review", "hooks", "workflow", "pull-requests"]
+}
