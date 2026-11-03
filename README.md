@@ -1,69 +1,61 @@
 # review-gate
 
-A Claude Code plugin that makes review part of every session instead of a step people forget. It follows how the Claude Code team reviews code.
+**A Claude Code plugin that makes code review part of every session, not a step someone forgets.**
 
-- **Self-review before a turn ends.** If Claude changed code this turn, the Stop hook blocks once and asks it to review its own diff with fresh context, then fix what it finds and prove the fix (build, tests, a request, a screenshot). The depth scales with risk:
-  - **Trivial** (3 lines or fewer, nothing sensitive): skipped.
-  - **Standard**: `code-review` at medium, or a fresh-context subagent.
-  - **Deep** (more than 400 lines, or a sensitive path such as auth, tokens, billing, CI, release, migrations, permissions or deploy config): `code-review` at high plus `security-review`.
-- **It only looks at this session's work.** Files that were already dirty when the session started aren't blamed on it. Non-code files (docs, data) are ignored. It never blocks twice in one turn, so author and reviewer can't loop. After 3 rounds it narrows to the new diff only.
-- **PR-only workflow.** In any repo with a remote, `git commit` on `main`/`master` and `git push` to them are refused. Work goes branch → PR → review → green checks → `gh pr merge`.
-- **Only a human signs off.** `gh pr merge --admin`, `gh pr review --approve` and edits to branch protection or rulesets are refused. Claude can add the `human-reviewed` label only within 15 minutes of the user typing a greenlight ("merge it", "lgtm", "ship it"). Typing "wait" or "don't" withdraws it.
-- **The rules travel with it.** [`RULES.md`](RULES.md) is injected into every session as context, so no one has to edit their CLAUDE.md.
+When Claude changes code, it reviews its own diff with fresh eyes before it's allowed to finish the turn, fixes what it finds, and shows proof that the fix works. In any repo with a remote, changes ship through a pull request, never straight to `main`. Only a human signs off.
 
-The `code-review` and `security-review` skills it calls ship with Claude Code. Nothing else to install.
+It follows how the Claude Code team reviews code. It is three small hooks plus a page of rules, with no server, no API keys and nothing leaving your machine.
 
-## Install
-
-Requires `python3` and `git` (plus `gh` for the PR flow).
+## Quick start
 
 ```
-/plugin marketplace add OWNER/claude-review-gate
+/plugin marketplace add obaid/claude-review-gate
 /plugin install review-gate@review-gate
 ```
 
-Restart Claude Code to load the hooks.
+Restart Claude Code. That's it. Full steps, the team rollout and troubleshooting are in **[docs/INSTALL.md](docs/INSTALL.md)**.
 
-**Already running `review-gate.py` from `~/.claude/hooks`?** Remove those hook entries from `~/.claude/settings.json` (and the review section from your CLAUDE.md) first. Otherwise every hook runs twice against the same state.
+## What it does
 
-### Roll it out to a whole repo
-
-Commit this to the repo's `.claude/settings.json`. Anyone who opens the repo in Claude Code is then asked to install the plugin:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "review-gate": { "source": { "source": "github", "repo": "OWNER/claude-review-gate" } }
-  },
-  "enabledPlugins": { "review-gate@review-gate": true }
-}
-```
-
-## Turning it off
-
-| Scope | How |
+| | |
 |---|---|
-| One repo | create `.claude/review-gate-off` in the repo |
-| Everywhere, for you | `mkdir -p ~/.claude/state/review-gate && touch ~/.claude/state/review-gate/OFF` |
-| One session | `CLAUDE_REVIEW_GATE=off claude` |
-| Uninstall | `/plugin uninstall review-gate@review-gate` |
+| 🔍 **Self-review before a turn ends** | If code changed this turn, the Stop hook pauses Claude once and asks for a review scaled to the risk: tiny edits are skipped, normal edits get `code-review` at medium, and sensitive or large edits get `code-review` at high plus `security-review`. |
+| 🎯 **Only this session's work** | Files that were already dirty when the session started are not blamed on it. Docs and data files are ignored. It never asks twice in one turn. |
+| 🔀 **PR-only workflow** | In repos with a remote, `git commit` on `main`/`master` and `git push` to them are refused. Work goes branch → PR → review → green checks → merge. |
+| ✋ **Humans sign off** | Admin merges, agent PR approvals and branch-protection edits are refused. The `human-reviewed` label can only be added right after *you* say "lgtm" or "merge it" in chat. |
+| 📜 **Rules come with it** | [`RULES.md`](RULES.md) is loaded into every session, so nobody edits their CLAUDE.md. |
 
-## Tuning per repo
+The `code-review` and `security-review` skills it relies on ship with Claude Code.
 
-Add a `REVIEW.md` at the repo root listing what counts as a failure there (invariants, forbidden patterns, past incidents). The gate tells the reviewer to read it, and asks Claude to add a line to it whenever a review finds something that should be a standing rule.
+## Docs
 
-If a repo's PRs are already reviewed by Claude in CI (`.github/workflows/claude-review.yml`), committed work isn't re-reviewed locally.
+- **[Installation guide](docs/INSTALL.md)**: requirements, installing for yourself, rolling out to a team or repo, verifying, updating, uninstalling, and migrating from a hand-wired hook.
+- **[User guide](docs/USER-GUIDE.md)**: what a session looks like, the review tiers, the PR and sign-off flow, writing a `REVIEW.md`, off switches, tuning and troubleshooting.
 
-The thresholds, sensitive-path patterns and code extensions are constants at the top of [`hooks/review-gate.py`](hooks/review-gate.py).
+## Repository layout
+
+```
+.claude-plugin/
+  plugin.json        plugin manifest
+  marketplace.json   lets this repo act as its own plugin marketplace
+hooks/
+  hooks.json         wires the hook events to review-gate.py
+  review-gate.py     the gate (Python 3, standard library only)
+RULES.md             review rules, loaded into every session
+docs/                installation and user guides
+tests/               end-to-end hook tests
+```
 
 ## Privacy
 
-The hook reads only paths, sizes, mtimes and per-line hashes, to size a diff without keeping any content. State and a log of gate decisions are kept in `~/.claude/state/review-gate/`. Nothing leaves the machine.
+The hook reads file paths, sizes, modification times and per-line hashes, enough to size a diff without keeping any content. Its state and decision log live in `~/.claude/state/review-gate/`. It makes no network calls.
 
 ## Development
 
 ```
-python3 tests/test_review_gate.py        # 14 tests; uses a temp HOME and throwaway repos
+python3 tests/test_review_gate.py                  # 14 tests; temp HOME, throwaway repos
 claude plugin validate .
-claude --plugin-dir . plugin details review-gate
+claude --plugin-dir . plugin details review-gate   # shows the 4 hook events load
 ```
+
+To try local changes in a session without installing them: `claude --plugin-dir /path/to/claude-review-gate`.
