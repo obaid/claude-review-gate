@@ -234,6 +234,9 @@ RULES_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 
 def on_session_start(data):
     session_id = data.get("session_id")
+    repo = repo_root(data.get("cwd") or os.getcwd())
+    if gate_off(repo):
+        return  # opted-out repo: no rules, no baseline
     try:
         with open(RULES_PATH) as f:
             rules = f.read()
@@ -243,7 +246,7 @@ def on_session_start(data):
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
                                                  "additionalContext": rules}}))
     state = load_state(session_id)
-    snapshot_repo(state, repo_root(data.get("cwd") or os.getcwd()))
+    snapshot_repo(state, repo)
     save_state(session_id, state)
 
 

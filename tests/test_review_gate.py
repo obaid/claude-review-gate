@@ -26,6 +26,13 @@ class Gate:
         out = subprocess.run([sys.executable, HOOK, event], input=json.dumps(payload),
                              capture_output=True, text=True, env=self.env, timeout=30)
         assert out.returncode == 0, out.stderr
+        # main() swallows exceptions and logs them; a crash must not pass as "skipped".
+        try:
+            with open(os.path.join(self.env["HOME"], ".claude", "state", "review-gate", "log.jsonl")) as f:
+                errors = [line for line in f if '"event": "error"' in line]
+        except FileNotFoundError:
+            errors = []
+        assert not errors, f"hook raised during {event}: {errors}"
         return json.loads(out.stdout) if out.stdout.strip() else None
 
 
@@ -63,6 +70,11 @@ class ReviewGateTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_off_switch_suppresses_rules(self):
+        os.makedirs(os.path.join(self.repo, ".claude"))
+        open(os.path.join(self.repo, ".claude", "review-gate-off"), "w").close()
+        self.assertIsNone(self.gate.run("session-start", cwd=self.repo))
 
     def test_session_start_injects_rules(self):
         out = self.gate.run("session-start", cwd=self.repo)
@@ -128,7 +140,8 @@ class ReviewGateTest(unittest.TestCase):
     def test_commit_on_main_refused(self):
         self.assertIn("branch -> PR", self.deny_reason("git commit -m wip"))
         self.assertIn("branch -> PR", self.deny_reason("git push origin main"))
-        self.assertIn("branch -> PR", self.deny_reason(f"git -C {self.repo} commit -am x"))
+        # cwd outside any repo, so only `-C` can point the hook at it
+        self.assertIn("branch -> PR", self.deny_reason(f"git -C {self.repo} commit -am x", cwd=self.tmp.name))
 
     def test_feature_branch_allowed(self):
         self.assertIsNone(self.deny_reason("git checkout -b feature/x && git commit -m x"))

@@ -24,6 +24,8 @@ Requires `python3` and `git` (plus `gh` for the PR flow).
 
 Restart Claude Code to load the hooks.
 
+**Already running `review-gate.py` from `~/.claude/hooks`?** Remove those hook entries from `~/.claude/settings.json` (and the review section from your CLAUDE.md) first. Otherwise every hook runs twice against the same state.
+
 ### Roll it out to a whole repo
 
 Commit this to the repo's `.claude/settings.json`. Anyone who opens the repo in Claude Code is then asked to install the plugin:
@@ -42,7 +44,7 @@ Commit this to the repo's `.claude/settings.json`. Anyone who opens the repo in 
 | Scope | How |
 |---|---|
 | One repo | create `.claude/review-gate-off` in the repo |
-| Everywhere, for you | `touch ~/.claude/state/review-gate/OFF` |
+| Everywhere, for you | `mkdir -p ~/.claude/state/review-gate && touch ~/.claude/state/review-gate/OFF` |
 | One session | `CLAUDE_REVIEW_GATE=off claude` |
 | Uninstall | `/plugin uninstall review-gate@review-gate` |
 
@@ -61,7 +63,7 @@ The hook reads only paths, sizes, mtimes and per-line hashes, to size a diff wit
 ## Development
 
 ```
-python3 tests/test_review_gate.py        # 13 tests; uses a temp HOME and throwaway repos
+python3 tests/test_review_gate.py        # 14 tests; uses a temp HOME and throwaway repos
 claude plugin validate .
 claude --plugin-dir . plugin details review-gate
 ```
